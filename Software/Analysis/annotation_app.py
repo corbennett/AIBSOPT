@@ -221,7 +221,7 @@ class App(QWidget):
                                                        (self.annotations.probe_name == 
                                                         self.selected_probe)].index.values
                 elif self.current_view == 2:
-                    AP = 1023 - x
+                    AP = x
                     DV = y
                     ML = self.slider.value()
                     matching_index = self.annotations[(self.annotations.ML == ML) &
@@ -371,7 +371,7 @@ class App(QWidget):
                     y = 1023-row.AP
                 elif self.current_view == 2:
                     shouldDraw = row.ML == self.slider.value()
-                    x = 1023 - row.AP
+                    x = row.AP
                     y = row.DV
 
                 if shouldDraw:
