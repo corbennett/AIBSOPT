@@ -100,6 +100,10 @@ class App(QWidget):
         self.switch_probe_button = QPushButton('Switch probe day', self)
         self.switch_probe_button.setToolTip('Switch probe recording day')
         self.switch_probe_button.clicked.connect(self.switchProbeDay)
+
+        self.projection_button = QPushButton('Show Projection', self)
+        self.projection_button.setToolTip('Show projection of next 10 slices')
+        self.projection_button.clicked.connect(self.showProjection)
         
         self.levelsLowField = QLineEdit(self)
         self.levelsLowField.setFixedWidth(120)
@@ -111,9 +115,10 @@ class App(QWidget):
 
         self.current_view = DEFAULT_VIEW
 
-        subgrid.addWidget(self.coronal_button,2,0,1,2)
-        subgrid.addWidget(self.horizontal_button,2,2,1,2)
-        subgrid.addWidget(self.sagittal_button,2,4,1,2)
+        subgrid.addWidget(self.coronal_button,2,0)
+        subgrid.addWidget(self.horizontal_button,2,1)
+        subgrid.addWidget(self.sagittal_button,2,2)
+        subgrid.addWidget(self.projection_button,2,3)
         
         subgrid.addWidget(self.switch_probe_button,3,0,1,1)
         subgrid.addWidget(self.levelsLowField,3,1,1,1)
@@ -139,6 +144,8 @@ class App(QWidget):
         self.data_loaded = False
 
         self.selected_probe = None
+
+        self.showing_projection = False
 
         self.setLayout(grid)
         self.viewCoronal()
@@ -195,52 +202,52 @@ class App(QWidget):
                 self.refreshImage()
 
     def clickedOnImage(self , event):
+        if not self.showing_projection:
+            if self.data_loaded:
+                x = int(event.pos().x() * 1024 / 800)
+                y = int(event.pos().y() * 1024 / 800)
 
-        if self.data_loaded:
-            x = int(event.pos().x() * 1024 / 800)
-            y = int(event.pos().y() * 1024 / 800)
+                #print('X: ' + str(x))
+                #print('Y: ' + str(y))
 
-            #print('X: ' + str(x))
-            #print('Y: ' + str(y))
+                if self.selected_probe is not None:
+                    #print('updating volume')
 
-            if self.selected_probe is not None:
-                #print('updating volume')
-
-                if self.current_view == 0:
-                    AP = self.slider.value()
-                    DV = y
-                    ML = 1023-x
-                    matching_index = self.annotations[(self.annotations.AP == AP) &
-                                                       (self.annotations.probe_name == 
-                                                        self.selected_probe)].index.values
-                elif self.current_view == 1:
-                    AP = 1023-y
-                    DV = self.slider.value()
-                    ML = 1023-x
-                    matching_index = self.annotations[(self.annotations.DV == DV) &
-                                                       (self.annotations.probe_name == 
-                                                        self.selected_probe)].index.values
-                elif self.current_view == 2:
-                    AP = x
-                    DV = y
-                    ML = self.slider.value()
-                    matching_index = self.annotations[(self.annotations.ML == ML) &
-                                                       (self.annotations.probe_name == 
-                                                        self.selected_probe)].index.values
+                    if self.current_view == 0:
+                        AP = self.slider.value()
+                        DV = y
+                        ML = 1023-x
+                        matching_index = self.annotations[(self.annotations.AP == AP) &
+                                                           (self.annotations.probe_name == 
+                                                            self.selected_probe)].index.values
+                    elif self.current_view == 1:
+                        AP = 1023-y
+                        DV = self.slider.value()
+                        ML = 1023-x
+                        matching_index = self.annotations[(self.annotations.DV == DV) &
+                                                           (self.annotations.probe_name == 
+                                                            self.selected_probe)].index.values
+                    elif self.current_view == 2:
+                        AP = x
+                        DV = y
+                        ML = self.slider.value()
+                        matching_index = self.annotations[(self.annotations.ML == ML) &
+                                                           (self.annotations.probe_name == 
+                                                            self.selected_probe)].index.values
 
 
-                if len(matching_index) > 0:
-                    self.annotations = self.annotations.drop(index=matching_index)
+                    if len(matching_index) > 0:
+                        self.annotations = self.annotations.drop(index=matching_index)
 
-                self.annotations = self.annotations.append(pd.DataFrame(data = {'AP' : [AP],
-                                    'ML' : [ML],
-                                    'DV': [DV],
-                                    'probe_name': [self.selected_probe]}), 
-                                    ignore_index=True)
+                    self.annotations = self.annotations.append(pd.DataFrame(data = {'AP' : [AP],
+                                        'ML' : [ML],
+                                        'DV': [DV],
+                                        'probe_name': [self.selected_probe]}), 
+                                        ignore_index=True)
 
-                self.saveData()
+                    self.saveData()
 
-                self.refreshImage()
+                    self.refreshImage()
 
     def selectProbe(self, b):
 
@@ -329,15 +336,35 @@ class App(QWidget):
             high_thresh=100
         
         
+        # if self.data_loaded:
+        #     plane = np.take(self.volume,
+        #          self.slider.value(),
+        #          axis=self.current_view)
+        #     if self.current_view == 2:
+        #         plane = plane.T
+        #     if self.current_view == 1:
+        #         plane = np.rot90(np.rot90(plane))
+        #     if self.current_view == 0:
+        #         plane = np.fliplr(plane)
         if self.data_loaded:
+            if self.showing_projection:
+                projection_indices = np.arange(self.slider.value()-25, self.slider.value()+25)
+                get_plane = lambda x: np.max(x, axis=self.current_view)
+            else:
+                projection_indices = self.slider.value()
+                get_plane = lambda x: x
+            
             plane = np.take(self.volume,
-                 self.slider.value(),
-                 axis=self.current_view)
+                  projection_indices,
+                  axis=self.current_view)
             if self.current_view == 2:
+                plane = get_plane(plane)
                 plane = plane.T
             if self.current_view == 1:
+                plane = get_plane(plane)
                 plane = np.rot90(np.rot90(plane))
             if self.current_view == 0:
+                plane = get_plane(plane)
                 plane = np.fliplr(plane)
             #scale image levels
             upper_q=np.percentile(plane,high_thresh)
@@ -362,15 +389,16 @@ class App(QWidget):
             for idx, row in self.annotations.iterrows():
 
                 if self.current_view == 0:
-                    shouldDraw = row.AP == self.slider.value()
+                    #shouldDraw = row.AP == self.slider.value()
+                    shouldDraw = np.isin(row.AP, projection_indices)
                     x = 1023-row.ML
                     y = row.DV
                 elif self.current_view == 1:
-                    shouldDraw = row.DV == self.slider.value()
+                    shouldDraw = np.isin(row.DV, projection_indices)
                     x = 1023-row.ML
                     y = 1023-row.AP
                 elif self.current_view == 2:
-                    shouldDraw = row.ML == self.slider.value()
+                    shouldDraw = np.isin(row.ML, projection_indices)
                     x = row.AP
                     y = row.DV
 
@@ -388,6 +416,20 @@ class App(QWidget):
 
         pxmap = QPixmap.fromImage(imQt).scaledToWidth(800).scaledToHeight(800)
         self.image.setPixmap(pxmap)
+    
+    
+    def showProjection(self):
+
+        if not self.showing_projection:
+            self.showing_projection = True
+            self.projection_button.setStyleSheet("background-color: darkGray")
+        else:
+            self.showing_projection = False
+            self.projection_button.setStyleSheet("background-color: lightGray")
+
+        self.refreshImage()
+        
+
 
     def loadData(self):
         
