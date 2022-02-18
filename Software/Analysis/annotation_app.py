@@ -115,10 +115,10 @@ class App(QWidget):
 
         self.current_view = DEFAULT_VIEW
 
-        subgrid.addWidget(self.coronal_button,2,0)
-        subgrid.addWidget(self.horizontal_button,2,1)
-        subgrid.addWidget(self.sagittal_button,2,2)
-        subgrid.addWidget(self.projection_button,2,3)
+        subgrid.addWidget(self.coronal_button,2,1)
+        subgrid.addWidget(self.horizontal_button,2,2)
+        subgrid.addWidget(self.sagittal_button,2,3)
+        subgrid.addWidget(self.projection_button,2,4)
         
         subgrid.addWidget(self.switch_probe_button,3,0,1,1)
         subgrid.addWidget(self.levelsLowField,3,1,1,1)
