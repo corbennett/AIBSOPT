@@ -6,8 +6,8 @@ This app allows a user to browse through an OPT volume and mark probe track loca
 
 import sys
 from functools import partial
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout, QFileDialog, QSlider, QLabel
-import PyQt5.QtWidgets as QtWidgets
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout, QFileDialog, QSlider, QLabel, QLineEdit
+import PyQt5.QtWidgets as QtWidgets 
 from PyQt5.QtGui import QIcon, QKeyEvent, QImage, QPixmap, QColor
 from PyQt5.QtCore import pyqtSlot, Qt
 
@@ -67,6 +67,8 @@ class App(QWidget):
                           'Probe E1': 4, 'Probe F1': 5,
                           'Probe A2': 6, 'Probe B2': 7, 'Probe C2': 8, 'Probe D2' : 9,
                           'Probe E2': 10, 'Probe F2': 11,
+                          'switch A': 12, 'switch B': 13, 'switch C': 14, 'switch D': 15,
+                          'switch E': 16, 'switch F': 17
                      }
 
         self.color_map = {'Probe A1': 'darkred', 'Probe B1': 'cadetblue',
@@ -94,13 +96,31 @@ class App(QWidget):
         self.sagittal_button = QPushButton('Sagittal', self)
         self.sagittal_button.setToolTip('Switch to sagittal view')
         self.sagittal_button.clicked.connect(self.viewSagittal)
+        
+        self.switch_probe_button = QPushButton('Switch probe day', self)
+        self.switch_probe_button.setToolTip('Switch probe recording day')
+        self.switch_probe_button.clicked.connect(self.switchProbeDay)
+        
+        self.levelsLowField = QLineEdit(self)
+        self.levelsLowField.setFixedWidth(120)
+        self.levelsHighField = QLineEdit(self)
+        self.levelsHighField.setFixedWidth(120)
+        
+        self.updateButton = QPushButton('Update', self)
+        self.updateButton.clicked.connect(self.refreshImage)
 
         self.current_view = DEFAULT_VIEW
 
         subgrid.addWidget(self.coronal_button,2,0,1,2)
         subgrid.addWidget(self.horizontal_button,2,2,1,2)
         subgrid.addWidget(self.sagittal_button,2,4,1,2)
-
+        
+        subgrid.addWidget(self.switch_probe_button,3,0,1,1)
+        subgrid.addWidget(self.levelsLowField,3,1,1,1)
+        subgrid.addWidget(self.levelsHighField,3,2,1,1)
+        subgrid.addWidget(self.updateButton,3,3,1,1)
+        
+                          
         save_button = QPushButton('Save', self)
         save_button.setToolTip('Save values as CSV')
         save_button.clicked.connect(self.saveData)
@@ -189,14 +209,14 @@ class App(QWidget):
                 if self.current_view == 0:
                     AP = self.slider.value()
                     DV = y
-                    ML = x
+                    ML = 1023-x
                     matching_index = self.annotations[(self.annotations.AP == AP) &
                                                        (self.annotations.probe_name == 
                                                         self.selected_probe)].index.values
                 elif self.current_view == 1:
-                    AP = y
+                    AP = 1023-y
                     DV = self.slider.value()
-                    ML = x
+                    ML = 1023-x
                     matching_index = self.annotations[(self.annotations.DV == DV) &
                                                        (self.annotations.probe_name == 
                                                         self.selected_probe)].index.values
@@ -262,23 +282,76 @@ class App(QWidget):
         self.horizontal_button.setStyleSheet("background-color: white")
         self.sagittal_button.setStyleSheet("background-color: gray")
         self.refreshImage()
-
+        
+    def switchProbeDay(self):
+        
+        if self.selected_probe is not None:
+            
+            for ii in range(0,len(self.annotations.probe_name)):
+                if self.annotations.probe_name.iloc[ii][:7]==self.selected_probe[:7]:
+                    if self.annotations.probe_name.iloc[ii][-1]=='1':
+                        self.annotations.probe_name.iloc[ii]=self.annotations.probe_name.iloc[ii][:-1]+'2'
+                    elif self.annotations.probe_name.iloc[ii][-1]=='2':
+                        self.annotations.probe_name.iloc[ii]=self.annotations.probe_name.iloc[ii][:-1]+'1'
+                
+                    self.saveData()
+            
+            self.refreshImage()
+            
+        
     def refreshImage(self):
 
         colors = ('darkred', 'orangered', 'goldenrod', 
             'darkgreen', 'darkblue', 'blueviolet',
             'red','orange','yellow','green','blue','violet')
-
+        
+        #set level-scaling cutoffs
+        low_thresh=[]
+        try:
+            low_thresh=int(self.levelsLowField.text())
+        except:
+            low_thresh=0
+        if low_thresh:
+            if (low_thresh<0)|(low_thresh>100):
+                low_thresh=0
+        else:
+            low_thresh=0
+            
+        high_thresh=[]
+        try:
+            high_thresh=int(self.levelsHighField.text())
+        except:
+            high_thresh=100
+        if high_thresh:
+            if (high_thresh<0)|(high_thresh>100):
+                high_thresh=100
+        else:
+            high_thresh=100
+        
+        
         if self.data_loaded:
             plane = np.take(self.volume,
                  self.slider.value(),
                  axis=self.current_view)
             if self.current_view == 2:
                 plane = plane.T
-            im8 = Image.fromarray(plane)            
+            if self.current_view == 1:
+                plane = np.rot90(np.rot90(plane))
+            if self.current_view == 0:
+                plane = np.fliplr(plane)
+            #scale image levels
+            upper_q=np.percentile(plane,high_thresh)
+            lower_q=np.percentile(plane,low_thresh)
+            plane_scaled = (plane-lower_q)/(upper_q-lower_q)
+            plane_scaled[plane_scaled<0]=0
+            plane_scaled[plane_scaled>1]=1
+            plane_scaled=np.round(plane_scaled*255)
+            plane_scaled=np.asarray(plane_scaled, dtype='uint8')
+            
+            im8 = Image.fromarray(plane_scaled)            
         else:
             im8 = Image.fromarray(np.ones((1024,1024),dtype='uint8')*255)
-            
+        
         imQt = QImage(ImageQt.ImageQt(im8))
         imQt = imQt.convertToFormat(QImage.Format_RGB16)
 
@@ -290,12 +363,12 @@ class App(QWidget):
 
                 if self.current_view == 0:
                     shouldDraw = row.AP == self.slider.value()
-                    x = row.ML
+                    x = 1023-row.ML
                     y = row.DV
                 elif self.current_view == 1:
                     shouldDraw = row.DV == self.slider.value()
-                    x = row.ML
-                    y = row.AP
+                    x = 1023-row.ML
+                    y = 1023-row.AP
                 elif self.current_view == 2:
                     shouldDraw = row.ML == self.slider.value()
                     x = 1023 - row.AP
@@ -306,8 +379,12 @@ class App(QWidget):
                     
                     for j in range(x-10,x+10):
                         for k in range(y-10,y+10):
-                            if pow(j-x,2) + pow(k-y,2) < 20:
-                                imQt.setPixelColor(j,k,color)
+                            if row.probe_name[-1] == '1':
+                                if pow(j-x,2) + pow(k-y,2) < 20:
+                                    imQt.setPixelColor(j,k,color)
+                            else:
+                                if (pow(j-x,2) + pow(k-y,2) < 25) and (pow(j-x,2) + pow(k-y,2)) > 5:
+                                    imQt.setPixelColor(j,k,color)
 
         pxmap = QPixmap.fromImage(imQt).scaledToWidth(800).scaledToHeight(800)
         self.image.setPixmap(pxmap)
@@ -339,6 +416,7 @@ class App(QWidget):
 
         else:
             print('invalid file')
+
             
     def saveData(self):
         
