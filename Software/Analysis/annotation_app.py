@@ -97,6 +97,11 @@ class App(QWidget):
         self.sagittal_button.setToolTip('Switch to sagittal view')
         self.sagittal_button.clicked.connect(self.viewSagittal)
         
+        self.pointLock_button = QPushButton('Point Lock ON', self)
+        self.pointLock_button.setToolTip('Toggle point lock')
+        self.pointLock_button.clicked.connect(self.pointLockToggle)
+        self.pointLock_button.setStyleSheet("background-color: rgb(170,0,0);color: white;font: bold 12px")
+        
         self.switch_probe_button = QPushButton('Switch probe day', self)
         self.switch_probe_button.setToolTip('Switch probe recording day')
         self.switch_probe_button.clicked.connect(self.switchProbeDay)
@@ -115,10 +120,11 @@ class App(QWidget):
 
         self.current_view = DEFAULT_VIEW
 
-        subgrid.addWidget(self.coronal_button,2,1)
-        subgrid.addWidget(self.horizontal_button,2,2)
-        subgrid.addWidget(self.sagittal_button,2,3)
-        subgrid.addWidget(self.projection_button,2,4)
+        subgrid.addWidget(self.coronal_button,2,0)
+        subgrid.addWidget(self.horizontal_button,2,1)
+        subgrid.addWidget(self.sagittal_button,2,2)
+        subgrid.addWidget(self.projection_button,2,3)
+        subgrid.addWidget(self.pointLock_button,2,4,1,2)
         
         subgrid.addWidget(self.switch_probe_button,3,0,1,1)
         subgrid.addWidget(self.levelsLowField,3,1,1,1)
@@ -146,6 +152,8 @@ class App(QWidget):
         self.selected_probe = None
 
         self.showing_projection = False
+        
+        self.point_lock = True
 
         self.setLayout(grid)
         self.viewCoronal()
@@ -202,7 +210,7 @@ class App(QWidget):
                 self.refreshImage()
 
     def clickedOnImage(self , event):
-        if not self.showing_projection:
+        if not self.showing_projection and not self.point_lock:
             if self.data_loaded:
                 x = int(event.pos().x() * 1024 / 800)
                 y = int(event.pos().y() * 1024 / 800)
@@ -304,6 +312,17 @@ class App(QWidget):
                     self.saveData()
             
             self.refreshImage()
+            
+    def pointLockToggle(self):
+        
+            if self.point_lock:
+                self.point_lock = False
+                self.pointLock_button.setText('Point Lock OFF')
+                self.pointLock_button.setStyleSheet("background-color: white;color: black;font: 12px")
+            else:
+                self.point_lock = True
+                self.pointLock_button.setText('Point Lock ON')
+                self.pointLock_button.setStyleSheet("background-color: rgb(170,0,0);color: white;font: bold 12px")
             
         
     def refreshImage(self):
