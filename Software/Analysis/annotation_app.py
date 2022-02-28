@@ -189,25 +189,25 @@ class App(QWidget):
             self.deletePoint()
 
     def deletePoint(self):
-        
-        if self.selected_probe is not None:
-
-            if self.current_view == 0:
-                matching_index = self.annotations[(self.annotations.AP == self.slider.value()) &
-                                                       (self.annotations.probe_name == self.selected_probe)].index.values
-            elif self.current_view == 1:
-                matching_index = self.annotations[(self.annotations.DV == self.slider.value()) &
-                                                       (self.annotations.probe_name == self.selected_probe)].index.values
-            elif self.current_view == 2:
-                matching_index = self.annotations[(self.annotations.ML == self.slider.value()) &
-                                                       (self.annotations.probe_name == self.selected_probe)].index.values
-
-            if len(matching_index) > 0:
-                self.annotations = self.annotations.drop(index=matching_index)
-
-                self.saveData()
-            
-                self.refreshImage()
+        if not self.showing_projection and not self.point_lock:
+            if self.selected_probe is not None:
+    
+                if self.current_view == 0:
+                    matching_index = self.annotations[(self.annotations.AP == self.slider.value()) &
+                                                           (self.annotations.probe_name == self.selected_probe)].index.values
+                elif self.current_view == 1:
+                    matching_index = self.annotations[(self.annotations.DV == self.slider.value()) &
+                                                           (self.annotations.probe_name == self.selected_probe)].index.values
+                elif self.current_view == 2:
+                    matching_index = self.annotations[(self.annotations.ML == self.slider.value()) &
+                                                           (self.annotations.probe_name == self.selected_probe)].index.values
+    
+                if len(matching_index) > 0:
+                    self.annotations = self.annotations.drop(index=matching_index)
+    
+                    self.saveData()
+                
+                    self.refreshImage()
 
     def clickedOnImage(self , event):
         if not self.showing_projection and not self.point_lock:
