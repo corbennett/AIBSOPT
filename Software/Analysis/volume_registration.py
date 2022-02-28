@@ -273,27 +273,34 @@ def transform_probe_coordinates(transform, probe_annotations, save_figures=False
     return df
 
 
-if __name__ == "__main__":
+def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
 
-    prefix = '/mnt/md0/data/opt/production/'
+#if __name__ == "__main__":
 
-    mouse = '495662'
+    #prefix = '/mnt/md0/data/opt/production/'
+    #prefix = base_opt_directory
+    #mouse = '495662'
 
-    scan_type = 'fluor'
+    #scan_type = 'fluor'
 
-    fname = os.path.join(prefix, mouse, 'probe_annotations.csv')
+    fname = os.path.join(opt_directory, 'probe_annotations.csv')
     probe_annotations = pd.read_csv(fname, index_col = 0)
 
-    volume = loadVolume(prefix + mouse + '/mouse' + mouse + '_' + scan_type + '.pvl.nc.001')
-    template = loadVolume('/mnt/md0/data/opt/template_brain/template_fluor.pvl.nc.001')
-    labels = np.load('/mnt/md0/data/opt/annotation_volume_10um_by_index.npy')
+    volume = loadVolume(os.path.join(opt_directory,'mouse' + mouse +'_' + scan_type + '.pvl.nc.001'))
+    #template = loadVolume('/mnt/md0/data/opt/template_brain/template_fluor.pvl.nc.001')
+    template = loadVolume(r"\\allen\programs\mindscope\workgroups\np-behavior\template_fluor.pvl.nc.001")
+    
+    #labels = np.load('/mnt/md0/data/opt/annotation_volume_10um_by_index.npy')
+    labels = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\annotation_volume_10um_by_index.npy")
 
-    source_landmarks = np.load(prefix + mouse + '/landmark_annotations.npy')
-    target_landmarks = np.load('/mnt/md0/data/opt/template_brain/landmark_annotations.npy')
+    source_landmarks = np.load(os.path.join(opt_directory, 'landmark_annotations.npy'))
+    #arget_landmarks = np.load('/mnt/md0/data/opt/template_brain/landmark_annotations.npy')
+    target_landmarks = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\template_landmark_annotations.npy")
 
-    structure_tree = pd.read_csv('/mnt/md0/data/opt/template_brain/ccf_structure_tree_2017.csv')
+    #structure_tree = pd.read_csv('/mnt/md0/data/opt/template_brain/ccf_structure_tree_2017.csv')
+    structure_tree = pd.read_csv(r"\\allen\programs\mindscope\workgroups\np-behavior\ccf_structure_tree_2017.csv")
 
-    output_file = prefix + mouse + '/initial_ccf_coordinates.csv'
+    output_file = os.path.join(opt_directory,'initial_ccf_coordinates.csv')
 
     source_landmarks = source_landmarks[:,np.array([2,0,1])]
     target_landmarks = target_landmarks[:,np.array([2,0,1])]
@@ -301,6 +308,7 @@ if __name__ == "__main__":
     transform = define_transform(source_landmarks, target_landmarks)
 
     fig = plot_transform(source_landmarks, target_landmarks)
+    fig.savefig(os.path.join(opt_directory, 'transform_plot.png'))
 
     df = transform_probe_coordinates(transform, probe_annotations)
 

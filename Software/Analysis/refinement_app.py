@@ -24,7 +24,8 @@ OFFSET_MAP = {'probeA': 120, 'probeB': 346, 'probeC': 572, 'probeD' : 798,
 INDEX_MAP = {'probeA': 0, 'probeB': 1, 'probeC': 2, 'probeD' : 3,
                      'probeE': 4, 'probeF': 5}
 
-structure_tree = pd.read_csv('/mnt/md0/data/opt/template_brain/ccf_structure_tree_2017.csv')
+#structure_tree = pd.read_csv('/mnt/md0/data/opt/template_brain/ccf_structure_tree_2017.csv')
+structure_tree = pd.read_csv(r"\\allen\programs\mindscope\workgroups\np-behavior\structure_tree_safe_2017.csv")
 
 def findBorders(structure_ids):
     
