@@ -17,15 +17,22 @@ import numpy as np
 import pandas as pd
 import re
 
-import os
+import os, glob
 
-OFFSET_MAP = {'probeA': 120, 'probeB': 346, 'probeC': 572, 'probeD' : 798,
-                     'probeE': 1024, 'probeF': 1250}
-INDEX_MAP = {'probeA': 0, 'probeB': 1, 'probeC': 2, 'probeD' : 3,
-                     'probeE': 4, 'probeF': 5}
+# OFFSET_MAP = {'probeA': 120, 'probeB': 346, 'probeC': 572, 'probeD' : 798,
+#                      'probeE': 1024, 'probeF': 1250}
+# INDEX_MAP = {'probeA': 0, 'probeB': 1, 'probeC': 2, 'probeD' : 3,
+#                      'probeE': 4, 'probeF': 5}
+
+OFFSET_MAP = {'Probe A1': 120, 'Probe B1': 346, 'Probe C1': 572, 'Probe D1' : 798, 'Probe E1': 1024, 'Probe F1': 1250,
+                'Probe A2': 120, 'Probe B2': 346, 'Probe C2': 572, 'Probe D2' : 798, 'Probe E2': 1024, 'Probe F2': 1250}
+
+INDEX_MAP = {'Probe A1': 0, 'Probe B1': 1, 'Probe C1': 2, 'Probe D1' : 3, 'Probe E1': 4, 'Probe F1': 5,
+                'Probe A2': 0, 'Probe B2': 1, 'Probe C2': 2, 'Probe D2' : 3, 'Probe E2': 4, 'Probe F2': 5}
+
 
 #structure_tree = pd.read_csv('/mnt/md0/data/opt/template_brain/ccf_structure_tree_2017.csv')
-structure_tree = pd.read_csv(r"\\allen\programs\mindscope\workgroups\np-behavior\structure_tree_safe_2017.csv")
+structure_tree = pd.read_csv(r"\\allen\programs\mindscope\workgroups\np-behavior\ccf_structure_tree_2017.csv")
 
 def findBorders(structure_ids):
     
@@ -72,7 +79,7 @@ class BoundaryButtons():
                 
             self.buttons[i].setText(name)
             self.buttons[i].setObjectName(str(border))
-            self.buttons[i].move(OFFSET_MAP[self.probe], border_locs[border] + 3)
+            self.buttons[i].move(OFFSET_MAP[self.probe + str(self.parent.day)], border_locs[border] + 3)
             
         self.parent.show()
         
@@ -92,14 +99,18 @@ class App(QWidget):
         self.height = 800
         self.initUI()
      
-    def initUI(self):
+    def initUI(self, day=1, fname=None):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         grid = QGridLayout()
         
-        self.probes = ('probeA', 'probeB', 'probeC', 'probeD', 'probeE', 'probeF')
-        
+        #self.probes = ('probeA', 'probeB', 'probeC', 'probeD', 'probeE', 'probeF')
+        #self.probes = ('Probe A1', 'Probe B1', 'Probe C1', 'Probe D1', 'Probe E1', 'Probe F1')
+        self.probes = ['Probe '+p+str(day) for p in 'ABCDEF']
+        self.day = day
+        self.fname = fname
+        self.day_selected = False
         self.probe_images = [QLabel(i) for i in self.probes]
         
         im8 = Image.fromarray(np.ones((800,100),dtype='uint8')*230)
@@ -107,12 +118,12 @@ class App(QWidget):
         imQt.convertToFormat(QImage.Format_ARGB32)
 
         for i, image in enumerate(self.probe_images):
-            image.setObjectName(self.probes[i])
+            image.setObjectName(self.probes[i][:-1])
             image.mousePressEvent = partial(self.clickedOnImage, image)
             image.setPixmap(QPixmap.fromImage(imQt))
             grid.addWidget(image,0,i*2)
             
-        self.boundary_buttons = [BoundaryButtons(i,self) for i in self.probes]
+        self.boundary_buttons = [BoundaryButtons(i[:-1], self) for i in self.probes]
         
         subgrid = QGridLayout()
 
@@ -124,12 +135,23 @@ class App(QWidget):
         load_button.setToolTip('Load volume data')
         load_button.clicked.connect(self.loadData)
 
+        self.set_day1_button = QPushButton('Day 1', self)
+        self.set_day1_button.setToolTip('Set annotations for day 1')
+        self.set_day1_button.clicked.connect(partial(self.setDay, 1))
+
+        self.set_day2_button = QPushButton('Day 2', self)
+        self.set_day2_button.setToolTip('Set annotations for day 2')
+        self.set_day2_button.clicked.connect(partial(self.setDay, 2))
+
         subgrid.addWidget(save_button,2,2)
-        subgrid.addWidget(load_button,2,3)
+        subgrid.addWidget(load_button,3,2)
+        subgrid.addWidget(self.set_day1_button, 4,2)
+        subgrid.addWidget(self.set_day2_button, 5,2)
+
 
         grid.addLayout(subgrid,0,13)
 
-        self.current_directory = '/mnt/md0/data/opt/production'
+        self.current_directory = r'\\allen\programs\mindscope\workgroups\np-behavior\processed_ALL'
 
         self.data_loaded = False
 
@@ -155,7 +177,7 @@ class App(QWidget):
         x = event.pos().x()
         y = event.pos().y()
 
-        if x < 100 and image.objectName() == self.selected_probe:
+        if x < 100 and image.objectName() == self.selected_probe[:-1]:
             
             self.anchor_points[self.selected_boundary, INDEX_MAP[self.selected_probe]] = int(y / 2)
             #print(y)
@@ -176,6 +198,8 @@ class App(QWidget):
                 if (probe == probe_to_refresh or probe_to_refresh == None):
                     
                     structure_ids = self.df[self.df['probe'] == probe]['structure_id'].values
+                    #print('structure ids for probe {}'.format(probe))
+                    #print(structure_ids)
                     
                     if len(structure_ids) > 0:
                 
@@ -200,7 +224,8 @@ class App(QWidget):
                                 
                         imQt = self.images[i].copy()
                         
-                        #print(imQt.height())
+                        print('image height')
+                        print(imQt.height())
                         
                         if imQt.height() == 2400:
                             
@@ -236,23 +261,55 @@ class App(QWidget):
             
     def selectBoundary(self, probe, border_index):
         
+        probe = probe + str(self.day)
         self.selected_probe = probe
+        print(probe)
         self.selected_boundary = int(border_index)
         
         self.refreshImage(probe)
 
+    
+    def setDay(self, day):
+
+        self.day = day
+        #self.day_selected = True
+        if day == 1:
+            self.set_day1_button.setStyleSheet("background-color: gray")
+            self.set_day2_button.setStyleSheet("background-color: white")
+        else:
+            self.set_day1_button.setStyleSheet("background-color: white")
+            self.set_day2_button.setStyleSheet("background-color: gray")
+
+        self.probes = [p[:-1]+str(day) for p in self.probes]
+        print(self.probes)
+
+        self.loadData()
+        #self.saveData()
+
+    
     def loadData(self):
         
-        fname, filt = QFileDialog.getOpenFileName(self, 
-            caption='Select ccf coordinates file', 
-            directory=self.current_directory,
-            filter='*.csv')
+        if self.fname is None:
+            self.fname, filt = QFileDialog.getOpenFileName(self, 
+                caption='Select ccf coordinates file', 
+                directory=self.current_directory,
+                filter='*.csv')
 
+        fname = self.fname
         print(fname)
 
         self.current_directory = os.path.dirname(fname)
         self.output_file = os.path.join(self.current_directory, 'final_ccf_coordinates.csv')
         self.anchor_points_file = os.path.join(self.current_directory, 'coordinate_anchor_points.npy')
+
+        channel_vis_mod_files = glob.glob(os.path.join(self.current_directory, 'channel_visual_modulation*.npy'))
+        session_dates = [cvm.split('_')[-1][:8] for cvm in channel_vis_mod_files]
+        session_dates = np.unique(session_dates)
+        session_dates = session_dates[np.argsort(session_dates)]
+        print(session_dates)
+
+        selected_session = session_dates[self.day-1]
+        print(selected_session)
 
         if fname.split('.')[-1] == 'csv':
 
@@ -260,13 +317,21 @@ class App(QWidget):
             self.df = pd.read_csv(fname)
             self.df['channels'] = 0
             
-            self.images = [QImage(self.current_directory + '/images/physiology_' + i + '.png') for i in self.probes]
-            
+            physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology*'+selected_session + '.png'))
+            print(physiology_plots)
+            #probes_present = [os.path.basename(p).split('_')[1][-1] for p in physiology_plots]
+            #probe_physio_paths = [os.path.join(self.current_directory,'physiology_probe' + i + '.png') for i in probes_present]
+            #self.images = [QImage(os.path.join(self.current_directory,'physiology_probe' + i + '.png')) for i in probes_present]
+            #print(probe_physio_paths)
+            self.images = [QImage(p) for p in physiology_plots]
+
             self.anchor_points = np.zeros((572,6)) - 1
             
             self.data_loaded = True
+            #if self.day_selected:
             self.refreshImage()
             
+
     def saveData(self):
         
         if self.data_loaded:

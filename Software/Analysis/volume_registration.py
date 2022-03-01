@@ -130,7 +130,8 @@ def plot_transform(source_landmarks, target_landmarks):
     return fig
 
 
-def transform_probe_coordinates(transform, probe_annotations, save_figures=False):
+def transform_probe_coordinates(transform, probe_annotations, labels, volume, 
+    structure_tree, save_path=None, save_figures=False):
 
     """
     Creates a figure showing the translation between
@@ -149,9 +150,10 @@ def transform_probe_coordinates(transform, probe_annotations, save_figures=False
     """
 
     if save_figures:
-        fig = plt.figure(147142)
+        save_prefix = os.path.basename(save_path) + '_'
+        fig1 = plt.figure(147142)
         plt.clf()
-        ax1 = fig.add_subplot(111, projection='3d')
+        ax1 = fig1.add_subplot(111, projection='3d')
         
         plt.figure(147143)
         plt.clf()
@@ -196,7 +198,7 @@ def transform_probe_coordinates(transform, probe_annotations, save_figures=False
                 ax1.plot3D(linepts[:,0],linepts[:,2],-linepts[:,1],color=colors[probe_idx], alpha=0.5)
                 plt.xlabel('A/P')
                 plt.ylabel('M/L')
-            
+
             intensity_values = np.zeros((linepts.shape[0],40))
             structure_ids = np.zeros((linepts.shape[0],))
             ccf_coordinates = np.zeros((linepts.shape[0],3))
@@ -251,7 +253,7 @@ def transform_probe_coordinates(transform, probe_annotations, save_figures=False
                 
                 ax.imshow(intensity_values, cmap='gray',aspect='auto')
 
-                fig.savefig('/mnt/md0/data/opt/production/' + mouse + '/images/histology_' + probes[i] + '.png', dpi=300)    
+                fig.savefig(os.path.join(save_path, save_prefix + probe + '.png'), dpi=300)    
                 
                 plt.close(fig)
                     
@@ -269,6 +271,9 @@ def transform_probe_coordinates(transform, probe_annotations, save_figures=False
                 plt.text(0,0,structure_tree[structure_tree.index == structure_ids[-1]]['acronym'].iloc[0])
                 plt.ylim([0,j+1])
                 plt.axis('off')
+
+    if save_figures:
+        fig1.savefig(os.path.join(save_path, save_prefix + 'probe_line_fits.png'), dpi=300)    
 
     return df
 
@@ -288,10 +293,12 @@ def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
 
     volume = loadVolume(os.path.join(opt_directory,'mouse' + mouse +'_' + scan_type + '.pvl.nc.001'))
     #template = loadVolume('/mnt/md0/data/opt/template_brain/template_fluor.pvl.nc.001')
-    template = loadVolume(r"\\allen\programs\mindscope\workgroups\np-behavior\template_fluor.pvl.nc.001")
+    #template = loadVolume(r"\\allen\programs\mindscope\workgroups\np-behavior\template_fluor.pvl.nc.001")
+    template = loadVolume(r"C:\Users\svc_ccg\Desktop\Data\Atlas\template_fluor.pvl.nc.001")
     
     #labels = np.load('/mnt/md0/data/opt/annotation_volume_10um_by_index.npy')
-    labels = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\annotation_volume_10um_by_index.npy")
+    #labels = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\annotation_volume_10um_by_index.npy")
+    labels = np.load(r"C:\Users\svc_ccg\Desktop\Data\Atlas\annotation_volume_10um_by_index.npy")
 
     source_landmarks = np.load(os.path.join(opt_directory, 'landmark_annotations.npy'))
     #arget_landmarks = np.load('/mnt/md0/data/opt/template_brain/landmark_annotations.npy')
@@ -310,7 +317,8 @@ def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
     fig = plot_transform(source_landmarks, target_landmarks)
     fig.savefig(os.path.join(opt_directory, 'transform_plot.png'))
 
-    df = transform_probe_coordinates(transform, probe_annotations)
+    df = transform_probe_coordinates(transform, probe_annotations, 
+        labels, volume, structure_tree, opt_directory, save_figures=True)
 
     df.to_csv(output_file)
 
