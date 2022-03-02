@@ -164,7 +164,9 @@ class App(QWidget):
             
         self.selected_probe = None
         self.selected_boundary = -1
-            
+        
+        self.init_anchors = False
+        
         self.show()
         
     def keyPressEvent(self, e):
@@ -201,15 +203,45 @@ class App(QWidget):
                     #print('structure ids for probe {}'.format(probe))
                     #print(structure_ids)
                     
+                    # #most ventral point in annotation
+                    if len(self.df_ann)>0:
+                        probe_ann_pts = self.df_ann[self.df_ann['probe'] == probe]
+                        tip_ind = np.argmax(probe_ann_pts['D/V'].values)
+                        tip = [
+                            probe_ann_pts['A/P'].iloc[tip_ind],
+                            probe_ann_pts['D/V'].iloc[tip_ind],
+                            probe_ann_pts['M/L'].iloc[tip_ind],
+                        ]
+                        
+                        probe_df = self.df[self.df['probe'] == probe]
+                        distances = probe_df.apply(
+                            lambda row: np.sqrt(
+                                (row['A/P'] - tip[0])**2 +
+                                (row['D/V'] - tip[1])**2 + 
+                                (row['M/L'] - tip[2])**2), axis=1)
+                        tipRow = np.argmin(distances)
+                        borders = findBorders(structure_ids)
+                        border_dist_from_tip = 400-borders
+                        #ensure chosen anchor point is above tip & visible in GUI
+                        positive_border_dist_from_tip = border_dist_from_tip[border_dist_from_tip>=0]
+                        closest_border_to_tip = np.argmin(positive_border_dist_from_tip)
+                    
                     if len(structure_ids) > 0:
                 
                         scale_factor = 6.0
-    
+                        
+                        #set nearest border to tip as the initial anchor
+                        if self.init_anchors == False:
+                            self.anchor_points[borders[closest_border_to_tip], i] = borders[closest_border_to_tip]
+                            
                         anchor_inds = np.where(self.anchor_points[:,i] > -1)[0]
                         anchor_locs = self.anchor_points[anchor_inds,i]
                         
-                        border_locs = np.arange(self.anchor_points.shape[0])
-                        
+                        if len(self.df_ann)>0:
+                            border_locs = np.arange(self.anchor_points.shape[0]) - (400 - tipRow)
+                        else:
+                            border_locs = np.arange(self.anchor_points.shape[0])
+                            
                         for ii, ind in enumerate(anchor_inds):
                             if ii == 0:
                                 border_locs = border_locs - border_locs[ind] + anchor_locs[ii]
@@ -259,6 +291,10 @@ class App(QWidget):
                                         
                             self.probe_images[i].setPixmap(QPixmap.fromImage(imQt).scaledToWidth(100).scaledToHeight(800))
             
+            if self.init_anchors == False:
+                #allows tip anchors to be changed after they are set initially
+                self.init_anchors = True
+            
     def selectBoundary(self, probe, border_index):
         
         probe = probe + str(self.day)
@@ -294,14 +330,17 @@ class App(QWidget):
                 caption='Select ccf coordinates file', 
                 directory=self.current_directory,
                 filter='*.csv')
-
+        
+        self.init_anchors = False
+        
         fname = self.fname
         print(fname)
 
         self.current_directory = os.path.dirname(fname)
         self.output_file = os.path.join(self.current_directory, 'final_ccf_coordinates.csv')
         self.anchor_points_file = os.path.join(self.current_directory, 'coordinate_anchor_points.npy')
-
+        self.annotation_ccf_coordinates = os.path.join(self.current_directory, 'annotation_ccf_coordinates.csv')
+        
         channel_vis_mod_files = glob.glob(os.path.join(self.current_directory, 'channel_visual_modulation*.npy'))
         session_dates = [cvm.split('_')[-1][:8] for cvm in channel_vis_mod_files]
         session_dates = np.unique(session_dates)
@@ -310,12 +349,18 @@ class App(QWidget):
 
         selected_session = session_dates[self.day-1]
         print(selected_session)
-
+        
         if fname.split('.')[-1] == 'csv':
 
             self.setWindowTitle(os.path.dirname(fname))
             self.df = pd.read_csv(fname)
             self.df['channels'] = 0
+            
+            if os.path.exists(self.annotation_ccf_coordinates):    
+                self.df_ann = pd.read_csv(self.annotation_ccf_coordinates)
+            else:
+                print('Missing annotation_ccf_coordinates.csv')
+                self.df_ann = []
             
             physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology*'+selected_session + '.png'))
             print(physiology_plots)
