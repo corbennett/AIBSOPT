@@ -166,6 +166,7 @@ class App(QWidget):
         self.selected_boundary = -1
         
         self.init_anchors = False
+
         self.show()
         
     def keyPressEvent(self, e):
@@ -352,7 +353,7 @@ class App(QWidget):
 
         selected_session = session_dates[self.day-1]
         print(selected_session)
-
+        
         if fname.split('.')[-1] == 'csv':
 
             self.setWindowTitle(os.path.dirname(fname))
@@ -369,6 +370,12 @@ class App(QWidget):
                 print('Missing annotation_ccf_coordinates.csv')
                 self.df_ann = []
 
+            
+            if os.path.exists(self.annotation_ccf_coordinates):    
+                self.df_ann = pd.read_csv(self.annotation_ccf_coordinates)
+            else:
+                print('Missing annotation_ccf_coordinates.csv')
+                self.df_ann = []
             
             physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology*'+selected_session + '.png'))
             print(physiology_plots)
