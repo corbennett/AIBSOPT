@@ -85,14 +85,18 @@ def align_to_physiology(session_path, outpath):
           
             #modulation_index = np.zeros((len(units),))
             #channels = np.zeros((len(units),))
-            
+
+            metrics_to_plot = ['duration', 'velocity_above']
+            channel_metrics = {}
+            for m in metrics_to_plot:
+                channel_metrics[m] = [[] for i in range(384)]
+
             for unit_idx, unit in metrics.iterrows():
                 
                 #channel = nwb['processing'][probe]['UnitTimes'][str(unit)]['channel'].value
                 channel = unit['peak_channel']
-                   
-                baseline = 1
-                evoked = 1
+                for m in metrics_to_plot:
+                    channel_metrics[m][channel].append(unit[m])
                 
                 unit_histogram[channel,probe_idx] += 1 
         
@@ -102,19 +106,40 @@ def align_to_physiology(session_path, outpath):
             ax.barh(np.arange(384),GF/GF.max(),height=1.0,alpha=0.1,color='teal')
             ax.plot(GF/GF.max(),np.arange(384),linewidth=3.0,alpha=0.78,color='teal') 
             
-            ax2 = ax.twiny()
-            ax2.plot(channel_vis_mod[probe[-1]], np.arange(384), linewidth=2.5, color='lightgreen')
+
+            filtered_metrics = {}
+            for m in metrics_to_plot:
+                thismetric = channel_metrics[m]
+                #channel_median = np.full(384, np.nan)
+                channel_median = np.zeros(384)
+                for chan in range(384):
+                    if len(thismetric[chan])==0:
+                        continue
+                    channel_median[chan] = np.median(thismetric[chan])
+                filtered_metrics[m] = gaussian_filter1d(channel_median,1)/np.nanmax(np.abs(channel_median))
+
+
+
+            #ax2 = ax.twiny()
+            ax.plot(2*channel_vis_mod[probe[-1]], np.arange(384), linewidth=2.5, color='lightgreen')
+            
+            for m in metrics_to_plot:
+                # if m=='velocity_above':
+                #     ax2.plot(filtered_metrics[m], np.arange(384), color='orange')
+                # else:
+                #     ax.plot(filtered_metrics[m], np.arange(384))
+                ax.plot(filtered_metrics[m], np.arange(384))
             
             plt.ylim([0,384])
-            plt.xlim([-0.05, 1])
-            #ax.set_xlim([-5,800])
-            #ax2.set_xlim([-0.05, 1])
+            plt.xlim([-0.25, 1])
+            #ax.set_xlim([-0.05, 1])
+            #ax2.set_xlim([-0.5, 0.5])
          
             #if not os.path.exists(outpath):
             #    os.mkdir(outpath)
             
-            fig.savefig(outpath + '/physiology_' + probe + '_' + session_id + '.png', dpi=300)   
-            plt.close(fig)
+            fig.savefig(outpath + '/physiology_withmetrics_' + probe + '_' + session_id + '.png', dpi=300)   
+            #plt.close(fig)
         except Exception as e:
             print("Error processing probe {} due to error {}".format(probe, e))
         

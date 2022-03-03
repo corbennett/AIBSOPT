@@ -164,6 +164,7 @@ class App(QWidget):
             
         self.selected_probe = None
         self.selected_boundary = -1
+        
             
         self.show()
         
@@ -194,7 +195,7 @@ class App(QWidget):
         if self.data_loaded:
             
             for i, probe in enumerate(self.probes):
-                
+
                 if (probe == probe_to_refresh or probe_to_refresh == None):
                     
                     structure_ids = self.df[self.df['probe'] == probe]['structure_id'].values
@@ -224,8 +225,8 @@ class App(QWidget):
                                 
                         imQt = self.images[i].copy()
                         
-                        print('image height')
-                        print(imQt.height())
+                        #print('image height')
+                        #print(imQt.height())
                         
                         if imQt.height() == 2400:
                             
@@ -272,7 +273,7 @@ class App(QWidget):
     def setDay(self, day):
 
         self.day = day
-        #self.day_selected = True
+        self.day_selected = True
         if day == 1:
             self.set_day1_button.setStyleSheet("background-color: gray")
             self.set_day2_button.setStyleSheet("background-color: white")
@@ -289,6 +290,9 @@ class App(QWidget):
     
     def loadData(self):
         
+        if not self.day_selected:
+            self.setDay(1)
+
         if self.fname is None:
             self.fname, filt = QFileDialog.getOpenFileName(self, 
                 caption='Select ccf coordinates file', 
@@ -300,7 +304,7 @@ class App(QWidget):
 
         self.current_directory = os.path.dirname(fname)
         self.output_file = os.path.join(self.current_directory, 'final_ccf_coordinates.csv')
-        self.anchor_points_file = os.path.join(self.current_directory, 'coordinate_anchor_points.npy')
+        #self.anchor_points_file = os.path.join(self.current_directory, 'coordinate_anchor_points.npy')
 
         channel_vis_mod_files = glob.glob(os.path.join(self.current_directory, 'channel_visual_modulation*.npy'))
         session_dates = [cvm.split('_')[-1][:8] for cvm in channel_vis_mod_files]
@@ -310,12 +314,16 @@ class App(QWidget):
 
         selected_session = session_dates[self.day-1]
         print(selected_session)
+        self.anchor_points_file = os.path.join(self.current_directory, selected_session + '_coordinate_anchor_points.npy')
 
         if fname.split('.')[-1] == 'csv':
 
             self.setWindowTitle(os.path.dirname(fname))
-            self.df = pd.read_csv(fname)
-            self.df['channels'] = 0
+            if self.data_loaded:
+                self.df.loc[self.df['probe'].isin(self.probes), 'channels'] = 0
+            else:
+                self.df = pd.read_csv(fname)
+                self.df['channels'] = 0
             
             physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology*'+selected_session + '.png'))
             print(physiology_plots)
@@ -325,7 +333,10 @@ class App(QWidget):
             #print(probe_physio_paths)
             self.images = [QImage(p) for p in physiology_plots]
 
-            self.anchor_points = np.zeros((572,6)) - 1
+            if os.path.exists(self.anchor_points_file):
+                self.anchor_points = np.load(self.anchor_points_file)
+            else:
+                self.anchor_points = np.zeros((572,6)) - 1
             
             self.data_loaded = True
             #if self.day_selected:
