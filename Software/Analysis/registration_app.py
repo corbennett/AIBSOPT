@@ -112,9 +112,8 @@ class App(QWidget):
         grid.addLayout(subgrid2,2,8,1,2)
 
         self.current_directory = '/mnt/md0/data/opt/production'
-        #template_path = '/mnt/md0/data/opt/template_brain/template_fluor.pvl.nc.001'
         template_path = r"C:\Users\svc_ccg\Desktop\Data\Atlas\template_fluor.pvl.nc.001"
-        self.template_annotations = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\template_landmark_annotations.npy")#'/mnt/md0/data/opt/template_brain/landmark_annotations.npy')
+        self.template_annotations = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\template_landmark_annotations.npy")
 
         self.data_loaded = False
         

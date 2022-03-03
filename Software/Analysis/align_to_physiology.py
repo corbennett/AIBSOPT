@@ -80,17 +80,17 @@ def align_to_physiology(session_path, outpath):
 
             print(metrics_file)
             metrics = pd.read_csv(metrics_file[0])
-            
-            #units = nwb['processing'][probe]['unit_list']
-          
-            #modulation_index = np.zeros((len(units),))
-            #channels = np.zeros((len(units),))
 
             metrics_to_plot = ['duration', 'velocity_above']
             channel_metrics = {}
             for m in metrics_to_plot:
                 channel_metrics[m] = [[] for i in range(384)]
-
+            
+            #units = nwb['processing'][probe]['unit_list']
+          
+            #modulation_index = np.zeros((len(units),))
+            #channels = np.zeros((len(units),))
+            
             for unit_idx, unit in metrics.iterrows():
                 
                 #channel = nwb['processing'][probe]['UnitTimes'][str(unit)]['channel'].value
@@ -105,7 +105,6 @@ def align_to_physiology(session_path, outpath):
             GF = gaussian_filter1d(unit_histogram[:,probe_idx]*100,2.5)
             ax.barh(np.arange(384),GF/GF.max(),height=1.0,alpha=0.1,color='teal')
             ax.plot(GF/GF.max(),np.arange(384),linewidth=3.0,alpha=0.78,color='teal') 
-            
 
             filtered_metrics = {}
             for m in metrics_to_plot:
@@ -124,22 +123,18 @@ def align_to_physiology(session_path, outpath):
             ax.plot(2*channel_vis_mod[probe[-1]], np.arange(384), linewidth=2.5, color='lightgreen')
             
             for m in metrics_to_plot:
-                # if m=='velocity_above':
-                #     ax2.plot(filtered_metrics[m], np.arange(384), color='orange')
-                # else:
-                #     ax.plot(filtered_metrics[m], np.arange(384))
                 ax.plot(filtered_metrics[m], np.arange(384))
             
+            
             plt.ylim([0,384])
-            plt.xlim([-0.25, 1])
-            #ax.set_xlim([-0.05, 1])
-            #ax2.set_xlim([-0.5, 0.5])
+            plt.xlim([-0.05, 1])
+
          
             #if not os.path.exists(outpath):
             #    os.mkdir(outpath)
             
-            fig.savefig(outpath + '/physiology_withmetrics_' + probe + '_' + session_id + '.png', dpi=300)   
-            #plt.close(fig)
+            fig.savefig(outpath + '/physiology_' + probe + '_' + session_id + '.png', dpi=300)   
+            plt.close(fig)
         except Exception as e:
             print("Error processing probe {} due to error {}".format(probe, e))
         

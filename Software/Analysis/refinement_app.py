@@ -166,7 +166,6 @@ class App(QWidget):
         self.selected_boundary = -1
         
         self.init_anchors = False
-        
         self.show()
         
     def keyPressEvent(self, e):
@@ -308,7 +307,8 @@ class App(QWidget):
     def setDay(self, day):
 
         self.day = day
-        #self.day_selected = True
+        self.day_selected = True
+
         if day == 1:
             self.set_day1_button.setStyleSheet("background-color: gray")
             self.set_day2_button.setStyleSheet("background-color: white")
@@ -325,6 +325,9 @@ class App(QWidget):
     
     def loadData(self):
         
+        if not self.day_selected:
+            self.setDay(1)
+
         if self.fname is None:
             self.fname, filt = QFileDialog.getOpenFileName(self, 
                 caption='Select ccf coordinates file', 
@@ -349,28 +352,33 @@ class App(QWidget):
 
         selected_session = session_dates[self.day-1]
         print(selected_session)
-        
+
         if fname.split('.')[-1] == 'csv':
 
             self.setWindowTitle(os.path.dirname(fname))
-            self.df = pd.read_csv(fname)
-            self.df['channels'] = 0
+            if self.data_loaded:
+                self.df.loc[self.df['probe'].isin(self.probes), 'channels'] = 0
+            else:
+                self.df = pd.read_csv(fname)
+                self.df['channels'] = 0
+
             
             if os.path.exists(self.annotation_ccf_coordinates):    
                 self.df_ann = pd.read_csv(self.annotation_ccf_coordinates)
             else:
                 print('Missing annotation_ccf_coordinates.csv')
                 self.df_ann = []
+
             
             physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology*'+selected_session + '.png'))
             print(physiology_plots)
-            #probes_present = [os.path.basename(p).split('_')[1][-1] for p in physiology_plots]
-            #probe_physio_paths = [os.path.join(self.current_directory,'physiology_probe' + i + '.png') for i in probes_present]
-            #self.images = [QImage(os.path.join(self.current_directory,'physiology_probe' + i + '.png')) for i in probes_present]
-            #print(probe_physio_paths)
+ 
             self.images = [QImage(p) for p in physiology_plots]
 
-            self.anchor_points = np.zeros((572,6)) - 1
+            if os.path.exists(self.anchor_points_file):
+                self.anchor_points = np.load(self.anchor_points_file)
+            else:
+                self.anchor_points = np.zeros((572,6)) - 1
             
             self.data_loaded = True
             #if self.day_selected:
