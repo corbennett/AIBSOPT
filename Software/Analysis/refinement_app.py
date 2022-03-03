@@ -165,7 +165,7 @@ class App(QWidget):
         self.selected_probe = None
         self.selected_boundary = -1
         
-        self.init_anchors = False
+        self.init_anchors = [False, False]
 
         self.show()
         
@@ -231,7 +231,7 @@ class App(QWidget):
                         scale_factor = 6.0
                         
                         #set nearest border to tip as the initial anchor
-                        if self.init_anchors == False and len(self.df_ann)>0:
+                        if self.init_anchors[self.day-1] == False and len(self.df_ann)>0:
                             self.anchor_points[borders[closest_border_to_tip], i] = borders[closest_border_to_tip]
                             
                         anchor_inds = np.where(self.anchor_points[:,i] > -1)[0]
@@ -291,9 +291,9 @@ class App(QWidget):
                                         
                             self.probe_images[i].setPixmap(QPixmap.fromImage(imQt).scaledToWidth(100).scaledToHeight(800))
             
-            if self.init_anchors == False:
+            if self.init_anchors[self.day-1] == False:
                 #allows tip anchors to be changed after they are set initially
-                self.init_anchors = True
+                self.init_anchors[self.day-1] = True
             
     def selectBoundary(self, probe, border_index):
         
@@ -335,7 +335,7 @@ class App(QWidget):
                 directory=self.current_directory,
                 filter='*.csv')
         
-        self.init_anchors = False
+        self.init_anchors = [False, False]
         
         fname = self.fname
         print(fname)
