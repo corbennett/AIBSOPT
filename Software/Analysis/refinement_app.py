@@ -80,6 +80,15 @@ class BoundaryButtons():
             self.buttons[i].setText(name)
             self.buttons[i].setObjectName(str(border))
             self.buttons[i].move(OFFSET_MAP[self.probe + str(self.parent.day)], border_locs[border] + 3)
+        
+        for i in range(len(borders),len(self.buttons)):
+            self.buttons[i].setGeometry(-100,20+i*50,50,15)
+            self.buttons[i].setObjectName(str(i))
+            self.buttons[i].setText('')
+            # print(self.buttons[i].objectName())
+            # print(self.buttons[i].text())
+            # print(self.buttons[i].geometry())
+            # print(' ')
             
         self.parent.show()
         
@@ -269,6 +278,9 @@ class App(QWidget):
                             border_locs = border_locs*scale_factor 
    
                             borders = findBorders(structure_ids)
+                            # print(probe)
+                            # print(structure_ids[borders])
+                            # print(borders)
         
                             for j, border in enumerate(borders):
                                 
@@ -306,7 +318,7 @@ class App(QWidget):
 
     
     def setDay(self, day):
-
+        
         self.day = day
         self.day_selected = True
 
@@ -319,11 +331,10 @@ class App(QWidget):
 
         self.probes = [p[:-1]+str(day) for p in self.probes]
         print(self.probes)
-
+        
         self.loadData()
         
-
-    
+        
     def loadData(self):
         
         if not self.day_selected:
