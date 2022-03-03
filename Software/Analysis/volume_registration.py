@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from scipy.spatial.distance import euclidean
 
+
 def loadVolume(fname, _dtype='u1'):
 
     """
@@ -170,17 +171,20 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
     df_columns = ['probe','structure_id', 'A/P','D/V','M/L']
 
     df = pd.DataFrame(columns = df_columns)
+    
+    df_a = pd.DataFrame(columns = df_columns)
 
     for probe_idx, probe in enumerate(probes):
         
         x = probe_annotations[probe_annotations.probe_name == probe].ML
         y = probe_annotations[probe_annotations.probe_name == probe].DV
-        
         z = probe_annotations[probe_annotations.probe_name == probe].AP
 
         if len(z) > 0:
         
             data = np.vstack((z,y,x)).T
+            data_a = np.copy(data)
+            print(data_a.shape)
             datamean = data.mean(axis=0)
             D = data - datamean
             m1 = np.min(D[:,1]) * 2
@@ -202,7 +206,7 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
             intensity_values = np.zeros((linepts.shape[0],40))
             structure_ids = np.zeros((linepts.shape[0],))
             ccf_coordinates = np.zeros((linepts.shape[0],3))
-
+            
             
             for j in range(linepts.shape[0]):
                 
@@ -215,6 +219,7 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
                 
                 ccf_coordinates[j,:] = ccf_coordinate_mm
                 
+
                 try:
                     structure_ids[j] = int(labels[int(ccf_coordinate[0]),int(ccf_coordinate[1]),int(ccf_coordinate[2])]) - 1
                 except IndexError:
@@ -232,10 +237,49 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
                     'D/V' : np.around(ccf_coordinates[:,1],3), 
                     'M/L' : np.around(ccf_coordinates[:,2],3) 
                     }
-
+            
             probe_df = pd.DataFrame(data)
         
             df = pd.concat((df, probe_df) ,ignore_index=True)
+            
+            #get the ccf coordinates of transformed annotation points
+            intensity_values_a = np.zeros((data_a.shape[0],40))
+            structure_ids_a = np.zeros((data_a.shape[0],))
+            ccf_coordinates_a = np.zeros((data_a.shape[0],3))
+            
+            for j in range(data_a.shape[0]):
+                
+                za,xa,ya = transform.TransformFloatPoint(data_a[j,np.array([0,2,1])])
+                
+                ccf_coordinate_a = (np.array([1023-za,xa,ya]) - origin) * scaling
+                ccf_coordinate_a = ccf_coordinate_a[np.array([0,2,1])]
+                
+                ccf_coordinate_a_mm = ccf_coordinate_a * 0.01
+                
+                ccf_coordinates_a[j,:] = ccf_coordinate_a_mm
+                
+                try:
+                    structure_ids_a[j] = int(labels[int(ccf_coordinate_a[0]),int(ccf_coordinate_a[1]),int(ccf_coordinate_a[2])]) - 1
+                except IndexError:
+                    structure_ids_a[j] = -1
+                
+                for k in range(-20,20):
+                    try:
+                        intensity_values_a[j,k+20] = (volume[int(data_a[j,0]),int(data_a[j,1]+k),int(data_a[j,2]+k)])
+                    except IndexError:
+                        pass
+            
+            data_a = {
+                'probe': [probes[probe_idx]]*data_a.shape[0], 
+                'structure_id': structure_ids_a.astype('int'), 
+                'A/P' : np.around(ccf_coordinates_a[:,0],3), 
+                'D/V' : np.around(ccf_coordinates_a[:,1],3), 
+                'M/L' : np.around(ccf_coordinates_a[:,2],3)
+                }
+            
+            probe_df_a = pd.DataFrame(data_a)
+        
+            df_a = pd.concat((df_a, probe_df_a) ,ignore_index=True)
             
             if save_figures:
                 plt.figure(147143)
@@ -275,7 +319,7 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
     if save_figures:
         fig1.savefig(os.path.join(save_path, save_prefix + 'probe_line_fits.png'), dpi=300)    
 
-    return df
+    return df, df_a
 
 
 def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
@@ -295,10 +339,12 @@ def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
     #template = loadVolume('/mnt/md0/data/opt/template_brain/template_fluor.pvl.nc.001')
     #template = loadVolume(r"\\allen\programs\mindscope\workgroups\np-behavior\template_fluor.pvl.nc.001")
     template = loadVolume(r"C:\Users\svc_ccg\Desktop\Data\Atlas\template_fluor.pvl.nc.001")
+    # template = loadVolume(r"D:\CCF_temp\template_fluor.pvl.nc.001")
     
     #labels = np.load('/mnt/md0/data/opt/annotation_volume_10um_by_index.npy')
     #labels = np.load(r"\\allen\programs\mindscope\workgroups\np-behavior\annotation_volume_10um_by_index.npy")
     labels = np.load(r"C:\Users\svc_ccg\Desktop\Data\Atlas\annotation_volume_10um_by_index.npy")
+    # labels = np.load(r"D:\CCF_temp\annotation_volume_10um_by_index.npy")
 
     source_landmarks = np.load(os.path.join(opt_directory, 'landmark_annotations.npy'))
     #arget_landmarks = np.load('/mnt/md0/data/opt/template_brain/landmark_annotations.npy')
@@ -308,6 +354,8 @@ def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
     structure_tree = pd.read_csv(r"\\allen\programs\mindscope\workgroups\np-behavior\ccf_structure_tree_2017.csv")
 
     output_file = os.path.join(opt_directory,'initial_ccf_coordinates.csv')
+    
+    output_file_a = os.path.join(opt_directory,'annotation_ccf_coordinates.csv')
 
     source_landmarks = source_landmarks[:,np.array([2,0,1])]
     target_landmarks = target_landmarks[:,np.array([2,0,1])]
@@ -317,8 +365,10 @@ def run_volume_registration(mouse, opt_directory, scan_type='fluor'):
     fig = plot_transform(source_landmarks, target_landmarks)
     fig.savefig(os.path.join(opt_directory, 'transform_plot.png'))
 
-    df = transform_probe_coordinates(transform, probe_annotations, 
+    df, df_a = transform_probe_coordinates(transform, probe_annotations, 
         labels, volume, structure_tree, opt_directory, save_figures=True)
 
     df.to_csv(output_file)
+    
+    df_a.to_csv(output_file_a)
 
