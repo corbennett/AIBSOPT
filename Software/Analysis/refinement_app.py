@@ -239,9 +239,9 @@ class App(QWidget):
                 
                         scale_factor = 6.0
                         
-                        #set nearest border to tip as the initial anchor
-                        if self.init_anchors[self.day-1] == False and len(self.df_ann)>0:
-                            self.anchor_points[borders[closest_border_to_tip], i] = borders[closest_border_to_tip]
+                        # #set nearest border to tip as the initial anchor
+                        # if self.init_anchors[self.day-1] == False and len(self.df_ann)>0:
+                        #     self.anchor_points[borders[closest_border_to_tip], i] = borders[closest_border_to_tip]
                             
                         anchor_inds = np.where(self.anchor_points[:,i] > -1)[0]
                         anchor_locs = self.anchor_points[anchor_inds,i]
