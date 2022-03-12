@@ -156,7 +156,7 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
         plt.clf()
         ax1 = fig1.add_subplot(111, projection='3d')
         
-        plt.figure(147143)
+        fig2 = plt.figure(147143)
         plt.clf()
 
     colors = ('red', 'orange', 'brown', 'green', 'blue', 'purple',
@@ -164,6 +164,9 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
 
     probes = ('Probe A1', 'Probe B1', 'Probe C1', 'Probe D1', 'Probe E1', 'Probe F1',
               'Probe A2', 'Probe B2', 'Probe C2', 'Probe D2', 'Probe E2', 'Probe F2')
+    
+    probes_short = ('A1', 'B1', 'C1', 'D1', 'E1', 'F1',
+                    'A2', 'B2', 'C2', 'D2', 'E2', 'F2')
 
     origin = np.array([-35, 42, 217],dtype='int')
     scaling = np.array([1160/1023,  1140/940, 800/590])
@@ -287,6 +290,7 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
                 plt.imshow(intensity_values, cmap='gray',aspect='auto')
                 plt.plot([20,20],[0,j],'-r')
                 plt.axis('off')
+                plt.title(probes_short[probe_idx])
 
                 fig = plt.figure(frameon=False)
                 fig.set_size_inches(1,8)
@@ -317,7 +321,8 @@ def transform_probe_coordinates(transform, probe_annotations, labels, volume,
                 plt.axis('off')
 
     if save_figures:
-        fig1.savefig(os.path.join(save_path, save_prefix + 'probe_line_fits.png'), dpi=300)    
+        fig1.savefig(os.path.join(save_path, save_prefix + 'probe_line_fits.png'), dpi=300)
+        fig2.savefig(os.path.join(save_path, save_prefix + 'probe_tracks.png'), dpi=300)
 
     return df, df_a
 
