@@ -205,8 +205,10 @@ class App(QWidget):
         if self.data_loaded:
             
             for i, probe in enumerate(self.probes):
+
+                print(probe)
                 
-                if (probe == probe_to_refresh or probe_to_refresh == None):
+                if (probe == probe_to_refresh or probe_to_refresh == None) and (probe in self.df['probe'].unique()):
                     
                     structure_ids = self.df[self.df['probe'] == probe]['structure_id'].values
                     #print('structure ids for probe {}'.format(probe))
@@ -373,7 +375,10 @@ class App(QWidget):
             else:
                 self.df = pd.read_csv(fname)
                 self.df['channels'] = 0
-            
+
+            #self.probes = [p for p in self.probes if p in self.df['probe'].unique()]
+            #print(self.probes)
+
             if os.path.exists(self.annotation_ccf_coordinates):    
                 self.df_ann = pd.read_csv(self.annotation_ccf_coordinates)
             else:
