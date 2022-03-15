@@ -230,7 +230,7 @@ class App(QWidget):
                                 (row['A/P'] - tip[0])**2 +
                                 (row['D/V'] - tip[1])**2 + 
                                 (row['M/L'] - tip[2])**2), axis=1)
-                        tipRow = np.argmin(distances)
+                        tipRow = np.argmin(distances.values)
                         #borders = findBorders(structure_ids)
                         border_dist_from_tip = 400-borders
                         #ensure chosen anchor point is above tip & visible in GUI
