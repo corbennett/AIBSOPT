@@ -265,7 +265,8 @@ class App(QWidget):
                                 border_locs[anchor_inds[ii]:] = border_locs[anchor_inds[ii]:] - border_locs[anchor_inds[ii]] + anchor_locs[ii]
                                    
                                 
-                        imQt = self.images[i].copy()
+                        #imQt = self.images[i].copy()
+                        imQt = self.images[probe[:-1]].copy()
                         
                         print('image height')
                         print(imQt.height())
@@ -385,9 +386,13 @@ class App(QWidget):
                 print('Missing annotation_ccf_coordinates.csv')
                 self.df_ann = []
             
-            physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology*'+selected_session + '.png'))
- 
-            self.images = [QImage(p) for p in physiology_plots]
+            physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology_probe*'+selected_session + '.png'))
+            physiology_probes = [os.path.basename(p).split('_')[1] for p in physiology_plots]
+            physiology_probes = ['Probe ' + p[-1] for p in physiology_probes]
+            print(physiology_probes)
+            #self.images = [QImage(p) for p in physiology_plots]
+            self.images = {probe: QImage(p) for p,probe in zip(physiology_plots, physiology_probes)}
+
 
             if os.path.exists(self.anchor_points_file):
                 self.anchor_points = np.load(self.anchor_points_file)
