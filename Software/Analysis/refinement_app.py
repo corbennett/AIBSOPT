@@ -38,7 +38,9 @@ def findBorders(structure_ids):
     
     borders = np.where(np.diff(structure_ids) != 0)[0]
     jumps = np.concatenate((np.array([5]),np.diff(borders)))
-    borders = borders[jumps > 3]
+    border_ids = structure_ids[borders]
+    l6b = np.array(['6b' in structure_tree.loc[sid]['acronym'] for sid in border_ids])
+    borders = borders[(jumps > 3)|l6b]
     
     return borders
 
@@ -386,7 +388,7 @@ class App(QWidget):
                 print('Missing annotation_ccf_coordinates.csv')
                 self.df_ann = []
             
-            physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology_probe*'+selected_session + '.png'))
+            physiology_plots = glob.glob(os.path.join(self.current_directory, 'physiology_probe*'+selected_session + '*.png'))
             physiology_probes = [os.path.basename(p).split('_')[1] for p in physiology_plots]
             physiology_probes = ['Probe ' + p[-1] for p in physiology_probes]
             print(physiology_probes)
